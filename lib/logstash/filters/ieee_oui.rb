@@ -8,7 +8,7 @@ java_import 'java.util.concurrent.locks.ReentrantReadWriteLock'
 # The ieee_oui filter allows you to match mac addresses to vendor names.
 # It accepts source mac addresses delimited by a colon(:), a dash(-) or no delimiter.
 # The filter requires a specially formatted oui-logstash.txt file for the ouifile.
-# See https://github.com/Vigilant-LLC/logstash-oui-scraper
+# See https://github.com/figure-of-late/logstash-oui-scraper
 class LogStash::Filters::IeeeOui < LogStash::Filters::Base
 
   config_name "ieee_oui"
