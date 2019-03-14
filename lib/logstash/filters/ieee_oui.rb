@@ -29,8 +29,8 @@ class LogStash::Filters::IeeeOui < LogStash::Filters::Base
   config :source, :validate => :string, :default => 'mac'
   # Target field for manufacture
   config :target, :validate => :string, :default => 'mac_mfr'
-  # Indicates how frequently (in seconds) to check the oui text file for updates
-  config :refresh_interval, :validate => :number, :default => 300
+    # Indicates how frequently (in seconds) to check the oui text file for updates (0 = never refresh, best performance as it bypasses locking)
+  config :refresh_interval, :validate => :number, :default => 0
   # Tag if lookup failure occurs
   config :tag_on_failure, :validate => :array, :default => ["_ouilookupfailure"]
 
@@ -39,6 +39,7 @@ class LogStash::Filters::IeeeOui < LogStash::Filters::Base
     rw_lock = java.util.concurrent.locks.ReentrantReadWriteLock.new
     @read_lock = rw_lock.readLock
     @write_lock = rw_lock.writeLock
+    @refresh_enabled = (@refresh_interval > 0)
 
     if @ouifile.nil?
       @ouihash = nil
@@ -50,7 +51,11 @@ class LogStash::Filters::IeeeOui < LogStash::Filters::Base
       )
     else
       @logger.info("Using OUI file", :path => @ouifile)
-      @logger.info("OUI file refresh check seconds", :number => @refresh_interval)
+      if @refresh_enabled
+        @logger.info("OUI file refresh check seconds", :number => @refresh_interval)
+      else
+        @logger.info("OUI file refresh disabled", :path => @ouifile)
+      end
       @md5 = nil
       @newmd5 = nil
       @ouihash = nil
@@ -61,21 +66,29 @@ class LogStash::Filters::IeeeOui < LogStash::Filters::Base
 
   private
   def lock_for_write
-    @write_lock.lock
-    begin
+    if @refresh_enabled
+      @write_lock.lock
+      begin
+        yield
+      ensure
+        @write_lock.unlock
+      end
+    else
       yield
-    ensure
-      @write_lock.unlock
     end
   end # def lock_for_write
 
   private
   def lock_for_read # ensuring only one thread updates the OUI hash
-    @read_lock.lock
-    begin
+    if @refresh_enabled
+      @read_lock.lock
+      begin
+        yield
+      ensure
+        @read_lock.unlock
+      end
+    else
       yield
-    ensure
-      @read_lock.unlock
     end
   end #def lock_for_read
 
@@ -101,11 +114,12 @@ class LogStash::Filters::IeeeOui < LogStash::Filters::Base
       @logger.debug("OUI file unchanged", :path => file)
     end
     @logger.debug("OUI file MD5", :string => @md5)
+    @logger.info("OUI hash length", :number => @ouihash.length)
   end
 
   private
   def needs_refresh?
-    @next_refresh < Time.now
+    @refresh_enabled && (@next_refresh < Time.now)
   end
 
   public

@@ -1,3 +1,5 @@
+## 1.0.6
+  - allow disabling refresh (when interval == 0) for performance
 ## 1.0.5
   - thread locking and refresh interval of oui file
 ## 1.0.4
