@@ -108,14 +108,11 @@ class LogStash::Filters::IeeeOui < LogStash::Filters::Base
     if @md5 != newmd5
       @md5 = newmd5
       @ouihash = hashfile(file)
-      @logger.info("Refreshing OUI file", :path => file)
-      @logger.info("OUI file MD5", :string => @md5)
-      @logger.info("OUI hash length", :number => @ouihash.length)
+      @logger.info("Refreshed OUI file, hash entries", :number => @ouihash.length)
     else
-      @logger.debug("OUI file unchanged", :path => file)
-      @logger.debug("OUI file MD5", :string => @md5)
-      @logger.debug("OUI hash length", :number => @ouihash.length)
+      @logger.debug("OUI file unchanged, hash entries", :number => @ouihash.length)
     end
+    @logger.debug("OUI file MD5", :string => @md5)
     @next_refresh = Time.now + @refresh_interval
   end
 
